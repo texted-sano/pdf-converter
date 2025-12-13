@@ -19,86 +19,43 @@
         body { font-family: sans-serif; max-width: 800px; margin: 20px auto; background: #f4f4f4; color: #333; }
         .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         h1 { text-align: center; font-size: 22px; margin-bottom: 25px; }
-        
-        /* セクションレイアウト */
         .section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .section:last-child { border: none; }
-        
         .row { display: flex; gap: 20px; flex-wrap: wrap; }
         .col { flex: 1; min-width: 240px; }
-        
-        /* フォーム要素 */
         label { display: block; font-weight: bold; margin-bottom: 8px; }
-        input[type="text"], select, input[type="number"] {
-            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
-        }
-        
-        /* ラジオ・チェックボックス */
+        input[type="text"], select, input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .option-group { margin-top: 5px; }
         .option-label { display: inline-flex; align-items: center; margin-right: 15px; font-weight: normal; cursor: pointer; }
         .option-label input { margin-right: 5px; }
-
-        /* スライダー */
         .range-wrap { display: flex; align-items: center; gap: 10px; }
         input[type="range"] { flex: 1; }
 
-        /* ==========================================
-           ファイル選択 & リストエリア
-        =========================================== */
-        #drop-zone {
-            border: 2px dashed #bbb; padding: 30px; text-align: center;
-            background: #fafafa; border-radius: 6px; cursor: pointer; margin-bottom: 15px;
-        }
+        /* エリアスタイル */
+        #drop-zone { border: 2px dashed #bbb; padding: 30px; text-align: center; background: #fafafa; border-radius: 6px; cursor: pointer; margin-bottom: 15px; }
         #drop-zone:hover { background: #eef; border-color: #007bff; }
+        #file-list-container { background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; margin-bottom: 15px; display: none; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 13px; height: 32px; }
         
-        #file-list-container {
-            background: #fff; border: 1px solid #ddd; border-radius: 4px; 
-            max-height: 200px; overflow-y: auto; margin-bottom: 15px; display: none;
-        }
-        .file-item {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 13px; height: 32px;
-        }
-        
-        /* 削除ボタン (極小サイズ維持) */
-        .remove-btn {
-            background: #ff4d4d; color: white; border: none; border-radius: 2px;
-            width: 20px !important; height: 20px !important;
-            min-width: 0 !important; flex: none !important;
-            cursor: pointer; font-size: 12px;
-            display: flex; align-items: center; justify-content: center; 
-            margin-left: 10px; padding: 0 !important;
-        }
+        /* 削除ボタン */
+        .remove-btn { background: #ff4d4d; color: white; border: none; border-radius: 2px; width: 20px !important; height: 20px !important; min-width: 0 !important; flex: none !important; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-left: 10px; padding: 0 !important; }
         .remove-btn:hover { background: #cc0000; }
         
-        /* ==========================================
-           操作ボタン群
-        =========================================== */
+        /* 操作ボタン */
         .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-        button {
-            padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; 
-            flex: 1; min-width: 120px;
-        }
+        button { padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; flex: 1; min-width: 120px; }
         #run-btn { background: #007bff; color: white; flex: 2; }
         #run-btn:disabled { background: #ccc; }
         #stop-btn { background: #dc3545; color: white; display: none; flex: 2; }
         #reset-btn { background: #6c757d; color: white; max-width: 150px; }
 
-        /* ==========================================
-           進捗 & ログエリア
-        =========================================== */
+        /* 進捗・ログ */
         #progress-area { margin-top: 15px; display: none; }
         .progress-track { background: #eee; height: 20px; border-radius: 10px; overflow: hidden; }
-        .progress-bar { 
-            height: 100%; background: #28a745; width: 0%; 
-            transition: width 0.2s; text-align: center; color: white; font-size: 12px; line-height: 20px;
-        }
-        
+        .progress-bar { height: 100%; background: #28a745; width: 0%; transition: width 0.2s; text-align: center; color: white; font-size: 12px; line-height: 20px; }
         #log-area { margin-top: 15px; font-size: 14px; max-height: 200px; overflow-y: auto; background: #f9f9f9; padding: 10px; }
         .log { padding: 4px 0; border-bottom: 1px solid #eee; }
-        .success { color: green; } 
-        .error { color: red; } 
-        .processing { color: #007bff; }
+        .success { color: green; } .error { color: red; } .processing { color: #007bff; }
     </style>
 </head>
 <body>
@@ -106,7 +63,7 @@
 <div class="container">
     <h1>PDF 画像化 & 再結合ツール</h1>
 
-    <!-- 1. 基本設定 -->
+    <!-- 設定 -->
     <div class="section">
         <div class="row">
             <div class="col">
@@ -133,7 +90,7 @@
         </div>
     </div>
 
-    <!-- 2. 保存設定 -->
+    <!-- 保存設定 -->
     <div class="section">
         <label>保存オプション</label>
         <div class="option-group">
@@ -154,7 +111,7 @@
         </div>
     </div>
 
-    <!-- 3. ファイル名置換 -->
+    <!-- 置換 -->
     <div class="section">
         <label>ファイル名置換</label>
         <div class="row">
@@ -163,7 +120,7 @@
         </div>
     </div>
 
-    <!-- 4. ファイル選択 -->
+    <!-- ファイル選択 -->
     <div class="section">
         <div id="drop-zone" onclick="document.getElementById('file-input').click()">
             <p>PDFをドロップ または クリックして選択</p>
@@ -172,14 +129,14 @@
         <div id="file-list-container"><div id="file-list"></div></div>
     </div>
 
-    <!-- 5. 操作ボタン -->
+    <!-- ボタン -->
     <div class="btn-group">
         <button id="run-btn" onclick="start()" disabled>変換開始</button>
         <button id="stop-btn" onclick="cancel()">中止</button>
         <button id="reset-btn" onclick="resetAll()">リセット</button>
     </div>
 
-    <!-- 6. 進捗 & ログ -->
+    <!-- ログ -->
     <div id="progress-area">
         <div id="progress-text" style="font-size:14px; margin-bottom:5px;">準備中...</div>
         <div class="progress-track"><div class="progress-bar" id="progress-bar">0%</div></div>
@@ -188,21 +145,24 @@
 </div>
 
 <script>
-    // --- 初期化 & 設定 ---
+    // --- ライブラリ設定 ---
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    // 【重要】文字コード辞書(CMap)の設定
+    // InDesignなどの日本語PDFで文字が空白になるのを防ぐため、
+    // 正確なCMapデータを提供するサーバー(unpkg)を指定します。
+    // ※代替フォント設定は削除し、PDF内のフォント情報を優先させます。
+    const CMAP_URL = 'https://unpkg.com/pdf.js-dist@3.11.174/cmaps/';
     
     let fileQueue = [];
     let isProcessing = false;
     let abortCtrl = false;
 
-    // --- UI操作関数 ---
-    
-    // JPEG選択時の表示切替
+    // --- UI操作 ---
     function toggleJpeg() {
         document.getElementById('jpeg-box').style.display = document.getElementById('format').value === 'jpeg' ? 'block' : 'none';
     }
 
-    // 全リセット
     function resetAll() {
         if (isProcessing) return alert("処理中はリセットできません");
         fileQueue = [];
@@ -214,14 +174,12 @@
         updateList();
     }
 
-    // ファイル追加
     const handleFiles = (files) => {
         if (isProcessing) return;
         Array.from(files).filter(f => f.type === 'application/pdf').forEach(f => fileQueue.push(f));
         updateList();
     };
 
-    // リスト描画
     function updateList() {
         const listEl = document.getElementById('file-list');
         const runBtn = document.getElementById('run-btn');
@@ -243,14 +201,12 @@
         }
     }
 
-    // ファイル削除
     function removeFile(index) {
         if (isProcessing) return;
         fileQueue.splice(index, 1);
         updateList();
     }
 
-    // ドラッグ＆ドロップイベント設定
     const dropZone = document.getElementById('drop-zone');
     dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = '#eef'; };
     dropZone.ondragleave = () => dropZone.style.background = '#fafafa';
@@ -258,7 +214,6 @@
     document.getElementById('file-input').onchange = e => handleFiles(e.target.files);
     document.getElementById('file-input').onclick = e => e.target.value = '';
 
-    // 中断処理
     function cancel() {
         if (isProcessing) {
             abortCtrl = true;
@@ -267,16 +222,13 @@
     }
 
     // --- メイン処理 ---
-    
     async function start() {
         if (fileQueue.length === 0) return;
         
-        // オプション取得
         const useZip = document.getElementById('zip-check').checked;
         const saveLoc = document.querySelector('input[name="save-loc"]:checked').value;
         let dirHandle = null;
 
-        // フォルダ選択処理 (権限エラー回避のため 'readwrite' を指定)
         if (saveLoc === 'folder') {
             if (!('showDirectoryPicker' in window)) {
                 alert("このブラウザはフォルダ選択に対応していません。標準ダウンロードを使用します。");
@@ -284,12 +236,11 @@
                 try {
                     dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
                 } catch (err) {
-                    return; // キャンセル時は終了
+                    return; 
                 }
             }
         }
 
-        // 処理開始の状態設定
         isProcessing = true;
         abortCtrl = false;
         
@@ -312,28 +263,22 @@
 
         const zip = useZip ? new JSZip() : null;
 
-        // ファイルループ処理
         for (let i = 0; i < fileQueue.length; i++) {
             if (abortCtrl) break;
             const file = fileQueue[i];
             
             try {
-                // PDF生成
                 const { data, fileName } = await processPdf(file, config, useZip);
                 
                 if (useZip) {
-                    // ZIPに追加
                     zip.file(fileName, data);
                 } else {
-                    // 個別保存
                     if (dirHandle) {
-                        // フォルダ選択時：ハンドルを使って書き込み
                         const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
                         const writable = await fileHandle.createWritable();
                         await writable.write(data);
                         await writable.close();
                     } else {
-                        // 標準ダウンロード時：リンク生成 (待機時間なしで連続実行)
                         saveAsFile(data, fileName);
                     }
                 }
@@ -344,7 +289,6 @@
             }
         }
 
-        // ZIPファイルの保存
         if (useZip && !abortCtrl && fileQueue.length > 0) {
             const content = await zip.generateAsync({type:"blob"});
             const zipName = "converted_files.zip";
@@ -365,7 +309,6 @@
             }
         }
 
-        // 終了処理
         isProcessing = false;
         document.getElementById('run-btn').disabled = false;
         document.getElementById('stop-btn').style.display = 'none';
@@ -375,9 +318,6 @@
         updateList();
     }
 
-    // --- 補助関数 ---
-
-    // 進捗バー更新
     function updateProgress(percent, text) {
         const bar = document.getElementById('progress-bar');
         bar.style.width = Math.floor(percent) + "%";
@@ -385,10 +325,22 @@
         document.getElementById('progress-text').textContent = text;
     }
 
-    // PDF変換プロセス
+    // --- PDF変換プロセス ---
     async function processPdf(file, config, forZip) {
         const arrayBuffer = await file.arrayBuffer();
-        const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        // 【純正描画設定】
+        // cMapUrl: 日本語CIDフォントのマッピング定義ファイルを正確に指定
+        // disableFontFace: 削除 (フォントデータを正しく解釈させる)
+        // standardFontDataUrl: 削除 (代替フォントを使わせない)
+        const loadingTask = pdfjsLib.getDocument({
+            data: arrayBuffer,
+            cMapUrl: CMAP_URL,
+            cMapPacked: true,
+            enableXfa: true // XFAフォーム対応（念のためON）
+        });
+        
+        const pdfDoc = await loadingTask.promise;
         const total = pdfDoc.numPages;
         
         const { jsPDF } = window.jspdf;
@@ -420,7 +372,6 @@
 
         updateProgress(100, `${file.name} 保存処理...`);
         
-        // ファイル名置換処理
         let outName = file.name.replace(/\.pdf$/i, '');
         if (config.find) outName = outName.split(config.find).join(config.replace);
         outName += ".pdf";
@@ -429,7 +380,6 @@
         return { data: output, fileName: outName };
     }
 
-    // ファイル保存（DOM操作でブロック回避）
     function saveAsFile(blob, fileName) {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -443,7 +393,6 @@
         }, 100);
     }
 
-    // ログ追加
     function addLog(msg, type) {
         const div = document.createElement('div');
         div.className = `log ${type}`;
