@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高画質PDF変換ツール</title>
+    
+    <!-- ==========================================
+         ライブラリ読み込み
+    =========================================== -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        /* ==========================================
+           ベーススタイル
+        =========================================== */
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; background: #f4f4f4; color: #333; }
+        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1 { text-align: center; font-size: 22px; margin-bottom: 25px; }
+        
+        /* セクションレイアウト */
+        .section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .section:last-child { border: none; }
+        
+        .row { display: flex; gap: 20px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 240px; }
+        
+        /* フォーム要素 */
+        label { display: block; font-weight: bold; margin-bottom: 8px; }
+        input[type="text"], select, input[type="number"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+        }
+        
+        /* ラジオ・チェックボックス */
+        .option-group { margin-top: 5px; }
+        .option-label { display: inline-flex; align-items: center; margin-right: 15px; font-weight: normal; cursor: pointer; }
+        .option-label input { margin-right: 5px; }
+
+        /* スライダー */
+        .range-wrap { display: flex; align-items: center; gap: 10px; }
+        input[type="range"] { flex: 1; }
+
+        /* ==========================================
+           ファイル選択 & リストエリア
+        =========================================== */
+        #drop-zone {
+            border: 2px dashed #bbb; padding: 30px; text-align: center;
+            background: #fafafa; border-radius: 6px; cursor: pointer; margin-bottom: 15px;
+        }
+        #drop-zone:hover { background: #eef; border-color: #007bff; }
+        
+        #file-list-container {
+            background: #fff; border: 1px solid #ddd; border-radius: 4px; 
+            max-height: 200px; overflow-y: auto; margin-bottom: 15px; display: none;
+        }
+        .file-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 13px; height: 32px;
+        }
+        
+        /* 削除ボタン (極小サイズ維持) */
+        .remove-btn {
+            background: #ff4d4d; color: white; border: none; border-radius: 2px;
+            width: 20px !important; height: 20px !important;
+            min-width: 0 !important; flex: none !important;
+            cursor: pointer; font-size: 12px;
+            display: flex; align-items: center; justify-content: center; 
+            margin-left: 10px; padding: 0 !important;
+        }
+        .remove-btn:hover { background: #cc0000; }
+        
+        /* ==========================================
+           操作ボタン群
+        =========================================== */
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button {
+            padding: 12px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; 
+            flex: 1; min-width: 120px;
+        }
+        #run-btn { background: #007bff; color: white; flex: 2; }
+        #run-btn:disabled { background: #ccc; }
+        #stop-btn { background: #dc3545; color: white; display: none; flex: 2; }
+        #reset-btn { background: #6c757d; color: white; max-width: 150px; }
+
+        /* ==========================================
+           進捗 & ログエリア
+        =========================================== */
+        #progress-area { margin-top: 15px; display: none; }
+        .progress-track { background: #eee; height: 20px; border-radius: 10px; overflow: hidden; }
+        .progress-bar { 
+            height: 100%; background: #28a745; width: 0%; 
+            transition: width 0.2s; text-align: center; color: white; font-size: 12px; line-height: 20px;
+        }
+        
+        #log-area { margin-top: 15px; font-size: 14px; max-height: 200px; overflow-y: auto; background: #f9f9f9; padding: 10px; }
+        .log { padding: 4px 0; border-bottom: 1px solid #eee; }
+        .success { color: green; } 
+        .error { color: red; } 
+        .processing { color: #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>PDF 画像化 & 再結合ツール</h1>
+
+    <!-- 1. 基本設定 -->
+    <div class="section">
+        <div class="row">
+            <div class="col">
+                <label>画像形式</label>
+                <select id="format" onchange="toggleJpeg()">
+                    <option value="png" selected>PNG (最高画質)</option>
+                    <option value="jpeg">JPEG (軽量)</option>
+                </select>
+                <div id="jpeg-box" style="display:none; margin-top:10px;">
+                    <label>品質 (0.1 - 1.0)</label>
+                    <div class="range-wrap">
+                        <input type="range" id="quality" min="0.1" max="1.0" step="0.1" value="0.9" oninput="document.getElementById('q-val').textContent=this.value">
+                        <span id="q-val">0.9</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <label>解像度 (DPI)</label>
+                <div class="range-wrap">
+                    <input type="range" id="dpi" min="72" max="600" step="10" value="350" oninput="document.getElementById('dpi-val').textContent=this.value">
+                    <span id="dpi-val" style="width:30px; text-align:right;">350</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 保存設定 -->
+    <div class="section">
+        <label>保存オプション</label>
+        <div class="option-group">
+            <label class="option-label">
+                <input type="checkbox" id="zip-check"> 完了後にZIPファイルにまとめる
+            </label>
+        </div>
+        <div style="margin-top: 10px;">
+            <label style="font-size:14px; margin-bottom:5px;">保存先:</label>
+            <div class="option-group">
+                <label class="option-label">
+                    <input type="radio" name="save-loc" value="download" checked> ダウンロードフォルダ (標準)
+                </label>
+                <label class="option-label" title="Chrome/Edge等の対応ブラウザのみ">
+                    <input type="radio" name="save-loc" value="folder"> フォルダを選択して保存
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ファイル名置換 -->
+    <div class="section">
+        <label>ファイル名置換</label>
+        <div class="row">
+            <div class="col"><input type="text" id="find-txt" placeholder="検索文字列"></div>
+            <div class="col"><input type="text" id="replace-txt" placeholder="置換文字列"></div>
+        </div>
+    </div>
+
+    <!-- 4. ファイル選択 -->
+    <div class="section">
+        <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <p>PDFをドロップ または クリックして選択</p>
+            <input type="file" id="file-input" multiple accept="application/pdf" style="display:none">
+        </div>
+        <div id="file-list-container"><div id="file-list"></div></div>
+    </div>
+
+    <!-- 5. 操作ボタン -->
+    <div class="btn-group">
+        <button id="run-btn" onclick="start()" disabled>変換開始</button>
+        <button id="stop-btn" onclick="cancel()">中止</button>
+        <button id="reset-btn" onclick="resetAll()">リセット</button>
+    </div>
+
+    <!-- 6. 進捗 & ログ -->
+    <div id="progress-area">
+        <div id="progress-text" style="font-size:14px; margin-bottom:5px;">準備中...</div>
+        <div class="progress-track"><div class="progress-bar" id="progress-bar">0%</div></div>
+    </div>
+    <div id="log-area"></div>
+</div>
+
+<script>
+    // --- 初期化 & 設定 ---
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
+    let fileQueue = [];
+    let isProcessing = false;
+    let abortCtrl = false;
+
+    // --- UI操作関数 ---
+    
+    // JPEG選択時の表示切替
+    function toggleJpeg() {
+        document.getElementById('jpeg-box').style.display = document.getElementById('format').value === 'jpeg' ? 'block' : 'none';
+    }
+
+    // 全リセット
+    function resetAll() {
+        if (isProcessing) return alert("処理中はリセットできません");
+        fileQueue = [];
+        document.getElementById('file-input').value = '';
+        document.getElementById('log-area').innerHTML = '';
+        document.getElementById('progress-area').style.display = 'none';
+        document.getElementById('find-txt').value = '';
+        document.getElementById('replace-txt').value = '';
+        updateList();
+    }
+
+    // ファイル追加
+    const handleFiles = (files) => {
+        if (isProcessing) return;
+        Array.from(files).filter(f => f.type === 'application/pdf').forEach(f => fileQueue.push(f));
+        updateList();
+    };
+
+    // リスト描画
+    function updateList() {
+        const listEl = document.getElementById('file-list');
+        const runBtn = document.getElementById('run-btn');
+        listEl.innerHTML = ''; 
+        if (fileQueue.length > 0) {
+            document.getElementById('file-list-container').style.display = 'block';
+            runBtn.disabled = isProcessing;
+            runBtn.textContent = `変換開始 (${fileQueue.length} ファイル)`;
+            fileQueue.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `<span>${file.name}</span><button class="remove-btn" onclick="removeFile(${index})">✕</button>`;
+                listEl.appendChild(item);
+            });
+        } else {
+            document.getElementById('file-list-container').style.display = 'none';
+            runBtn.disabled = true;
+            runBtn.textContent = '変換開始';
+        }
+    }
+
+    // ファイル削除
+    function removeFile(index) {
+        if (isProcessing) return;
+        fileQueue.splice(index, 1);
+        updateList();
+    }
+
+    // ドラッグ＆ドロップイベント設定
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.ondragover = e => { e.preventDefault(); dropZone.style.background = '#eef'; };
+    dropZone.ondragleave = () => dropZone.style.background = '#fafafa';
+    dropZone.ondrop = e => { e.preventDefault(); dropZone.style.background = '#fafafa'; handleFiles(e.dataTransfer.files); };
+    document.getElementById('file-input').onchange = e => handleFiles(e.target.files);
+    document.getElementById('file-input').onclick = e => e.target.value = '';
+
+    // 中断処理
+    function cancel() {
+        if (isProcessing) {
+            abortCtrl = true;
+            document.getElementById('stop-btn').textContent = "停止中...";
+        }
+    }
+
+    // --- メイン処理 ---
+    
+    async function start() {
+        if (fileQueue.length === 0) return;
+        
+        // オプション取得
+        const useZip = document.getElementById('zip-check').checked;
+        const saveLoc = document.querySelector('input[name="save-loc"]:checked').value;
+        let dirHandle = null;
+
+        // フォルダ選択処理 (権限エラー回避のため 'readwrite' を指定)
+        if (saveLoc === 'folder') {
+            if (!('showDirectoryPicker' in window)) {
+                alert("このブラウザはフォルダ選択に対応していません。標準ダウンロードを使用します。");
+            } else {
+                try {
+                    dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+                } catch (err) {
+                    return; // キャンセル時は終了
+                }
+            }
+        }
+
+        // 処理開始の状態設定
+        isProcessing = true;
+        abortCtrl = false;
+        
+        document.getElementById('run-btn').disabled = true;
+        document.getElementById('run-btn').textContent = "処理中...";
+        document.getElementById('stop-btn').style.display = 'inline-block';
+        document.getElementById('stop-btn').textContent = "中止";
+        document.getElementById('reset-btn').disabled = true;
+        document.getElementById('progress-area').style.display = 'block';
+        document.getElementById('log-area').innerHTML = '';
+        updateList();
+
+        const config = {
+            format: document.getElementById('format').value,
+            quality: parseFloat(document.getElementById('quality').value),
+            dpi: parseInt(document.getElementById('dpi').value),
+            find: document.getElementById('find-txt').value,
+            replace: document.getElementById('replace-txt').value
+        };
+
+        const zip = useZip ? new JSZip() : null;
+
+        // ファイルループ処理
+        for (let i = 0; i < fileQueue.length; i++) {
+            if (abortCtrl) break;
+            const file = fileQueue[i];
+            
+            try {
+                // PDF生成
+                const { data, fileName } = await processPdf(file, config, useZip);
+                
+                if (useZip) {
+                    // ZIPに追加
+                    zip.file(fileName, data);
+                } else {
+                    // 個別保存
+                    if (dirHandle) {
+                        // フォルダ選択時：ハンドルを使って書き込み
+                        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(data);
+                        await writable.close();
+                    } else {
+                        // 標準ダウンロード時：リンク生成 (待機時間なしで連続実行)
+                        saveAsFile(data, fileName);
+                    }
+                }
+                addLog(`✅ ${file.name} 完了`, 'success');
+            } catch (err) {
+                if (err.message === 'ABORTED') addLog(`⛔ ${file.name} 中断`, 'error');
+                else addLog(`❌ ${file.name} エラー: ${err.message}`, 'error');
+            }
+        }
+
+        // ZIPファイルの保存
+        if (useZip && !abortCtrl && fileQueue.length > 0) {
+            const content = await zip.generateAsync({type:"blob"});
+            const zipName = "converted_files.zip";
+
+            if (dirHandle) {
+                try {
+                    const fileHandle = await dirHandle.getFileHandle(zipName, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                    addLog(`✅ フォルダに保存完了`, 'success');
+                } catch(e) {
+                    addLog(`❌ 保存エラー: ${e.message}`, 'error');
+                }
+            } else {
+                saveAsFile(content, zipName);
+                addLog(`✅ ZIPダウンロード完了`, 'success');
+            }
+        }
+
+        // 終了処理
+        isProcessing = false;
+        document.getElementById('run-btn').disabled = false;
+        document.getElementById('stop-btn').style.display = 'none';
+        document.getElementById('reset-btn').disabled = false;
+        updateProgress(0, "完了");
+        setTimeout(() => { if(!isProcessing) document.getElementById('progress-area').style.display = 'none'; }, 3000);
+        updateList();
+    }
+
+    // --- 補助関数 ---
+
+    // 進捗バー更新
+    function updateProgress(percent, text) {
+        const bar = document.getElementById('progress-bar');
+        bar.style.width = Math.floor(percent) + "%";
+        bar.textContent = Math.floor(percent) + "%";
+        document.getElementById('progress-text').textContent = text;
+    }
+
+    // PDF変換プロセス
+    async function processPdf(file, config, forZip) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+        const total = pdfDoc.numPages;
+        
+        const { jsPDF } = window.jspdf;
+        const newPdf = new jsPDF({ compress: true });
+        newPdf.deletePage(1);
+        const scale = config.dpi / 72;
+
+        for (let num = 1; num <= total; num++) {
+            if (abortCtrl) throw new Error('ABORTED');
+            updateProgress(((num - 1) / total) * 100, `${file.name} (${num}/${total}ページ)`);
+            
+            const page = await pdfDoc.getPage(num);
+            const viewport = page.getViewport({ scale: scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            const imgType = config.format === 'jpeg' ? 'image/jpeg' : 'image/png';
+            const imgData = canvas.toDataURL(imgType, config.format === 'jpeg' ? config.quality : undefined);
+            const props = newPdf.getImageProperties(imgData);
+            
+            newPdf.addPage([props.width, props.height], props.width > props.height ? 'l' : 'p');
+            newPdf.addImage(imgData, config.format.toUpperCase(), 0, 0, props.width, props.height);
+            
+            await new Promise(r => setTimeout(r, 0));
+        }
+
+        updateProgress(100, `${file.name} 保存処理...`);
+        
+        // ファイル名置換処理
+        let outName = file.name.replace(/\.pdf$/i, '');
+        if (config.find) outName = outName.split(config.find).join(config.replace);
+        outName += ".pdf";
+
+        const output = forZip ? newPdf.output('arraybuffer') : newPdf.output('blob');
+        return { data: output, fileName: outName };
+    }
+
+    // ファイル保存（DOM操作でブロック回避）
+    function saveAsFile(blob, fileName) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }, 100);
+    }
+
+    // ログ追加
+    function addLog(msg, type) {
+        const div = document.createElement('div');
+        div.className = `log ${type}`;
+        div.textContent = msg;
+        const log = document.getElementById('log-area');
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+    }
+</script>
+</body>
+</html>
