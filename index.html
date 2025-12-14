@@ -294,8 +294,8 @@
             <div class="col">
                 <label>解像度 (DPI)</label>
                 <div class="range-wrap">
-                    <input type="range" id="dpi-slider" min="72" max="600" step="10" value="300">
-                    <input type="number" id="dpi-number" value="300" min="1" step="10" class="dpi-input">
+                    <input type="range" id="dpi-slider" min="72" max="600" step="10" value="120">
+                    <input type="number" id="dpi-number" value="120" min="1" step="10" class="dpi-input">
                 </div>
             </div>
         </div>
@@ -518,7 +518,7 @@
         const config = {
             format: document.getElementById('format').value,
             quality: parseFloat(document.getElementById('quality').value),
-            dpi: parseInt(document.getElementById('dpi-number').value) || 350,
+            dpi: parseInt(document.getElementById('dpi-number').value) || 120,
             find: document.getElementById('find-txt').value,
             replace: document.getElementById('replace-txt').value
         };
@@ -751,5 +751,8 @@
 </script>
 </body>
 </html>
+
+
+
 
 
