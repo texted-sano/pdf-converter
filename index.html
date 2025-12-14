@@ -211,7 +211,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 18px; 
             margin-left: 10px;
             padding: 0;
             line-height: 1;
@@ -279,22 +279,23 @@
             <div class="col">
                 <label>変換形式</label>
                 <select id="format" onchange="toggleJpeg()">
-                    <option value="png" selected>PNG (高画質)</option>
-                    <option value="jpeg">JPEG (軽量)</option>
+                    <option value="png">PNG (高画質)</option>
+                    <option value="jpeg" selected>JPEG (軽量)</option>
                 </select>
-                <div id="jpeg-box" style="display:none; margin-top:10px;">
+
+                <div id="jpeg-box" style="display:block; margin-top:10px;">
                     <label>品質 (0.1 - 1.0)</label>
                     <div class="range-wrap">
-                        <input type="range" id="quality" min="0.1" max="1.0" step="0.1" value="0.9" oninput="document.getElementById('q-val').textContent=this.value">
-                        <span id="q-val" style="width:30px; text-align:right;">0.9</span>
+                        <input type="range" id="quality" min="0.1" max="1.0" step="0.1" value="1.0" oninput="document.getElementById('q-val').textContent=this.value">
+                        <span id="q-val" style="width:30px; text-align:right;">1.0</span>
                     </div>
                 </div>
             </div>
             <div class="col">
                 <label>解像度 (DPI)</label>
                 <div class="range-wrap">
-                    <input type="range" id="dpi-slider" min="72" max="600" step="10" value="350">
-                    <input type="number" id="dpi-number" value="350" min="1" step="10" class="dpi-input">
+                    <input type="range" id="dpi-slider" min="72" max="600" step="10" value="300">
+                    <input type="number" id="dpi-number" value="300" min="1" step="10" class="dpi-input">
                 </div>
             </div>
         </div>
@@ -428,7 +429,6 @@
                     ? '<span class="badge badge-pdf">PDF</span>'
                     : '<span class="badge badge-img">IMG</span>';
                 
-                // シンプルな×ボタン
                 item.innerHTML = `<span>${typeBadge}${file.name}</span><button class="remove-btn" onclick="removeFile(${index})" title="削除">×</button>`;
                 listEl.appendChild(item);
             });
@@ -627,14 +627,12 @@
             const isLandscape = imgData.width > imgData.height;
 
             if (newPdf === null) {
-                // 1ページ目のサイズで初期化
                 newPdf = new jsPDF({
                     unit: 'pt',
                     format: [imgData.width, imgData.height],
                     orientation: isLandscape ? 'l' : 'p',
                     compress: true
                 });
-                // DataURLヘッダに任せるため format指定は null
                 newPdf.addImage(imgData.data, null, 0, 0, imgData.width, imgData.height);
             } else {
                 newPdf.addPage([imgData.width, imgData.height], isLandscape ? 'l' : 'p');
@@ -711,7 +709,6 @@
                     orientation: viewport.width > viewport.height ? 'l' : 'p',
                     compress: true
                 });
-                // フォーマットは自動判別 (null)
                 newPdf.addImage(imgData, null, 0, 0, viewport.width, viewport.height);
             } else {
                 newPdf.addPage([viewport.width, viewport.height], viewport.width > viewport.height ? 'l' : 'p');
