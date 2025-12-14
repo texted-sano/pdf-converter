@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高画質PDF変換ツール</title>
+    <title>PDF変換＆結合ツール</title>
     
     <!-- ==========================================
          ライブラリ読み込み
@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 
     <style>
         /* ==========================================
@@ -25,17 +26,23 @@
         .col { flex: 1; min-width: 240px; }
         label { display: block; font-weight: bold; margin-bottom: 8px; }
         input[type="text"], select, input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        /* 数値入力（解像度用）のカスタムスタイル */
+        .dpi-input { width: 60px !important; padding: 5px !important; text-align: right; margin-left: 10px; }
+
         .option-group { margin-top: 5px; }
         .option-label { display: inline-flex; align-items: center; margin-right: 15px; font-weight: normal; cursor: pointer; }
         .option-label input { margin-right: 5px; }
-        .range-wrap { display: flex; align-items: center; gap: 10px; }
-        input[type="range"] { flex: 1; }
+        .range-wrap { display: flex; align-items: center; }
+        input[type="range"] { flex: 1; margin: 0; }
 
         /* エリアスタイル */
         #drop-zone { border: 2px dashed #bbb; padding: 30px; text-align: center; background: #fafafa; border-radius: 6px; cursor: pointer; margin-bottom: 15px; }
         #drop-zone:hover { background: #eef; border-color: #007bff; }
-        #file-list-container { background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 200px; overflow-y: auto; margin-bottom: 15px; display: none; }
-        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 13px; height: 32px; }
+        #file-list-container { background: #fff; border: 1px solid #ddd; border-radius: 4px; max-height: 300px; overflow-y: auto; margin-bottom: 15px; display: none; }
+        #file-list { padding: 0; margin: 0; list-style: none; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 13px; height: 32px; cursor: grab; }
+        .file-item:last-child { border-bottom: none; }
         
         /* 削除ボタン */
         .remove-btn { background: #ff4d4d; color: white; border: none; border-radius: 2px; width: 20px !important; height: 20px !important; min-width: 0 !important; flex: none !important; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; margin-left: 10px; padding: 0 !important; }
@@ -56,18 +63,23 @@
         #log-area { margin-top: 15px; font-size: 14px; max-height: 200px; overflow-y: auto; background: #f9f9f9; padding: 10px; }
         .log { padding: 4px 0; border-bottom: 1px solid #eee; }
         .success { color: green; } .error { color: red; } .processing { color: #007bff; }
+        
+        /* バッジ */
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; margin-right: 8px; font-weight: bold; }
+        .badge-pdf { background: #d32f2f; }
+        .badge-img { background: #1976d2; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>PDF 画像化 & 再結合ツール</h1>
+    <h1>PDF画像変換>再結合 or 画像PDF結合ツール</h1>
 
     <!-- 設定 -->
     <div class="section">
         <div class="row">
             <div class="col">
-                <label>画像形式</label>
+                <label>変換形式</label>
                 <select id="format" onchange="toggleJpeg()">
                     <option value="png" selected>PNG (最高画質)</option>
                     <option value="jpeg">JPEG (軽量)</option>
@@ -76,15 +88,16 @@
                     <label>品質 (0.1 - 1.0)</label>
                     <div class="range-wrap">
                         <input type="range" id="quality" min="0.1" max="1.0" step="0.1" value="0.9" oninput="document.getElementById('q-val').textContent=this.value">
-                        <span id="q-val">0.9</span>
+                        <span id="q-val" style="margin-left:10px;">0.9</span>
                     </div>
                 </div>
             </div>
             <div class="col">
-                <label>解像度 (DPI)</label>
+                <label>解像度</label>
                 <div class="range-wrap">
-                    <input type="range" id="dpi" min="72" max="600" step="10" value="350" oninput="document.getElementById('dpi-val').textContent=this.value">
-                    <span id="dpi-val" style="width:30px; text-align:right;">350</span>
+                    <input type="range" id="dpi-slider" min="72" max="600" step="10" value="350">
+                    <!-- 手入力用数値ボックス (見た目を調整) -->
+                    <input type="number" id="dpi-number" value="350" min="1" step="10" class="dpi-input">
                 </div>
             </div>
         </div>
@@ -113,7 +126,7 @@
 
     <!-- 置換 -->
     <div class="section">
-        <label>ファイル名置換</label>
+        <label>PDFファイル名置換 (PDFのみ)</label>
         <div class="row">
             <div class="col"><input type="text" id="find-txt" placeholder="検索文字列"></div>
             <div class="col"><input type="text" id="replace-txt" placeholder="置換文字列"></div>
@@ -123,10 +136,12 @@
     <!-- ファイル選択 -->
     <div class="section">
         <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <p>PDFをドロップ または クリックして選択</p>
-            <input type="file" id="file-input" multiple accept="application/pdf" style="display:none">
+            <p>PDF または 画像ファイル をドロップ<br>(クリックして選択)</p>
+            <input type="file" id="file-input" multiple accept="application/pdf, image/*" style="display:none">
         </div>
-        <div id="file-list-container"><div id="file-list"></div></div>
+        <div id="file-list-container">
+            <ul id="file-list"></ul>
+        </div>
     </div>
 
     <!-- ボタン -->
@@ -147,16 +162,23 @@
 <script>
     // --- ライブラリ設定 ---
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    
-    // 【重要】文字コード辞書(CMap)の設定
-    // InDesignなどの日本語PDFで文字が空白になるのを防ぐため、
-    // 正確なCMapデータを提供するサーバー(unpkg)を指定します。
-    // ※代替フォント設定は削除し、PDF内のフォント情報を優先させます。
     const CMAP_URL = 'https://unpkg.com/pdf.js-dist@3.11.174/cmaps/';
     
     let fileQueue = [];
     let isProcessing = false;
     let abortCtrl = false;
+    let sortable; 
+
+    // --- DPI入力同期 ---
+    const dpiSlider = document.getElementById('dpi-slider');
+    const dpiNumber = document.getElementById('dpi-number');
+
+    dpiSlider.addEventListener('input', function() {
+        dpiNumber.value = this.value;
+    });
+    dpiNumber.addEventListener('input', function() {
+        dpiSlider.value = this.value;
+    });
 
     // --- UI操作 ---
     function toggleJpeg() {
@@ -176,28 +198,53 @@
 
     const handleFiles = (files) => {
         if (isProcessing) return;
-        Array.from(files).filter(f => f.type === 'application/pdf').forEach(f => fileQueue.push(f));
+        Array.from(files).forEach(f => {
+            if (f.type === 'application/pdf' || f.type.startsWith('image/')) {
+                fileQueue.push(f);
+            }
+        });
         updateList();
     };
 
     function updateList() {
         const listEl = document.getElementById('file-list');
         const runBtn = document.getElementById('run-btn');
-        listEl.innerHTML = ''; 
+        listEl.innerHTML = '';
+        
         if (fileQueue.length > 0) {
             document.getElementById('file-list-container').style.display = 'block';
             runBtn.disabled = isProcessing;
             runBtn.textContent = `変換開始 (${fileQueue.length} ファイル)`;
+
             fileQueue.forEach((file, index) => {
-                const item = document.createElement('div');
+                const item = document.createElement('li');
                 item.className = 'file-item';
-                item.innerHTML = `<span>${file.name}</span><button class="remove-btn" onclick="removeFile(${index})">✕</button>`;
+                item.dataset.index = index;
+
+                const typeBadge = file.type === 'application/pdf'
+                    ? '<span class="badge badge-pdf">PDF</span>'
+                    : '<span class="badge badge-img">IMG</span>';
+
+                item.innerHTML = `<span>${typeBadge}${file.name}</span><button class="remove-btn" onclick="removeFile(${index})">✕</button>`;
                 listEl.appendChild(item);
+            });
+            
+            if (sortable) sortable.destroy();
+            sortable = new Sortable(listEl, {
+                draggable: '.file-item',
+                onUpdate: (evt) => {
+                    const movedFile = fileQueue.splice(evt.oldIndex, 1)[0];
+                    fileQueue.splice(evt.newIndex, 0, movedFile);
+                },
+                handle: '.file-item',
+                cursor: 'grab',
+                animation: 150
             });
         } else {
             document.getElementById('file-list-container').style.display = 'none';
             runBtn.disabled = true;
             runBtn.textContent = '変換開始';
+            if (sortable) { sortable.destroy(); sortable = null; }
         }
     }
 
@@ -221,6 +268,17 @@
         }
     }
 
+    function getTimestampFilename() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const H = String(now.getHours()).padStart(2, '0');
+        const M = String(now.getMinutes()).padStart(2, '0');
+        const S = String(now.getSeconds()).padStart(2, '0');
+        return `${y}${m}${d}${H}${M}${S}.pdf`;
+    }
+
     // --- メイン処理 ---
     async function start() {
         if (fileQueue.length === 0) return;
@@ -235,9 +293,7 @@
             } else {
                 try {
                     dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-                } catch (err) {
-                    return; 
-                }
+                } catch (err) { return; }
             }
         }
 
@@ -251,47 +307,53 @@
         document.getElementById('reset-btn').disabled = true;
         document.getElementById('progress-area').style.display = 'block';
         document.getElementById('log-area').innerHTML = '';
-        updateList();
 
+        // 数値ボックスから確実に値を取得
         const config = {
             format: document.getElementById('format').value,
             quality: parseFloat(document.getElementById('quality').value),
-            dpi: parseInt(document.getElementById('dpi').value),
+            dpi: parseInt(document.getElementById('dpi-number').value) || 350,
             find: document.getElementById('find-txt').value,
             replace: document.getElementById('replace-txt').value
         };
 
         const zip = useZip ? new JSZip() : null;
+        const pdfFiles = fileQueue.filter(f => f.type === 'application/pdf');
+        const imgFiles = fileQueue.filter(f => f.type.startsWith('image/'));
 
-        for (let i = 0; i < fileQueue.length; i++) {
+        // 1. PDFファイルの処理
+        for (let i = 0; i < pdfFiles.length; i++) {
             if (abortCtrl) break;
-            const file = fileQueue[i];
-            
+            const file = pdfFiles[i];
             try {
                 const { data, fileName } = await processPdf(file, config, useZip);
-                
-                if (useZip) {
-                    zip.file(fileName, data);
-                } else {
-                    if (dirHandle) {
-                        const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(data);
-                        await writable.close();
-                    } else {
-                        saveAsFile(data, fileName);
-                    }
-                }
-                addLog(`✅ ${file.name} 完了`, 'success');
+                await handleSave(data, fileName, useZip, zip, dirHandle);
+                addLog(`✅ [PDF] ${fileName} 変換完了`, 'success');
             } catch (err) {
                 if (err.message === 'ABORTED') addLog(`⛔ ${file.name} 中断`, 'error');
                 else addLog(`❌ ${file.name} エラー: ${err.message}`, 'error');
             }
         }
 
-        if (useZip && !abortCtrl && fileQueue.length > 0) {
+        // 2. 画像ファイルの処理（まとめて1つのPDF）
+        if (imgFiles.length > 0 && !abortCtrl) {
+            try {
+                addLog(`ℹ️ 画像 ${imgFiles.length} 枚を結合中...`, 'processing');
+                const timestampName = getTimestampFilename();
+                const { data, fileName } = await processImagesToPdf(imgFiles, config, timestampName, useZip);
+                await handleSave(data, fileName, useZip, zip, dirHandle);
+                addLog(`✅ [画像結合] ${fileName} 作成完了`, 'success');
+            } catch (err) {
+                if (err.message === 'ABORTED') addLog(`⛔ 画像結合処理を中断`, 'error');
+                else addLog(`❌ 画像結合エラー: ${err.message}`, 'error');
+            }
+        }
+
+        // ZIP保存
+        if (useZip && !abortCtrl && (pdfFiles.length > 0 || imgFiles.length > 0)) {
+            addLog(`📦 ZIPファイルを作成中...`, 'processing');
             const content = await zip.generateAsync({type:"blob"});
-            const zipName = "converted_files.zip";
+            const zipName = `converted_${getTimestampFilename().replace('.pdf','.zip')}`;
 
             if (dirHandle) {
                 try {
@@ -299,7 +361,7 @@
                     const writable = await fileHandle.createWritable();
                     await writable.write(content);
                     await writable.close();
-                    addLog(`✅ フォルダに保存完了`, 'success');
+                    addLog(`✅ ZIPをフォルダに保存完了`, 'success');
                 } catch(e) {
                     addLog(`❌ 保存エラー: ${e.message}`, 'error');
                 }
@@ -309,8 +371,28 @@
             }
         }
 
+        finishProcess();
+    }
+
+    async function handleSave(data, fileName, useZip, zip, dirHandle) {
+        if (useZip) {
+            zip.file(fileName, data);
+        } else {
+            if (dirHandle) {
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(data);
+                await writable.close();
+            } else {
+                saveAsFile(data, fileName);
+            }
+        }
+    }
+
+    function finishProcess() {
         isProcessing = false;
         document.getElementById('run-btn').disabled = false;
+        document.getElementById('run-btn').textContent = "変換開始";
         document.getElementById('stop-btn').style.display = 'none';
         document.getElementById('reset-btn').disabled = false;
         updateProgress(0, "完了");
@@ -325,49 +407,103 @@
         document.getElementById('progress-text').textContent = text;
     }
 
-    // --- PDF変換プロセス ---
+    // --- 画像ファイル処理 (結合) ---
+    async function processImagesToPdf(files, config, outFileName, forZip) {
+        const { jsPDF } = window.jspdf;
+        // unit: 'pt' で初期化
+        const newPdf = new jsPDF({ unit: 'pt', compress: true });
+        newPdf.deletePage(1);
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        for (let i = 0; i < files.length; i++) {
+            if (abortCtrl) throw new Error('ABORTED');
+            updateProgress(((i) / files.length) * 100, `画像結合中 (${i + 1}/${files.length})`);
+            
+            // DPI設定を反映してリサイズされた画像データを取得
+            const imgData = await imageFileToDataUrl(files[i], config, canvas, ctx);
+            
+            const isLandscape = imgData.width > imgData.height;
+            newPdf.addPage([imgData.width, imgData.height], isLandscape ? 'l' : 'p');
+            newPdf.addImage(imgData.data, config.format.toUpperCase(), 0, 0, imgData.width, imgData.height);
+        }
+
+        updateProgress(100, `結合PDF保存中...`);
+        const output = forZip ? newPdf.output('arraybuffer') : newPdf.output('blob');
+        return { data: output, fileName: outFileName };
+    }
+
+    // DPIに基づいて画像をリサイズしてDataURL化
+    function imageFileToDataUrl(file, config, canvas, ctx) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                // DPIに基づいてスケールを計算 (72dpi = 1.0倍)
+                const scale = config.dpi / 72;
+                
+                // キャンバスサイズを整数値で計算 (小数点はトラブルの元)
+                const targetWidth = Math.floor(img.width * scale);
+                const targetHeight = Math.floor(img.height * scale);
+
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                ctx.clearRect(0, 0, targetWidth, targetHeight);
+                
+                // 画像をリサイズして描画（ブラウザがバイリニア補間等を行う）
+                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+                
+                const imgType = config.format === 'jpeg' ? 'image/jpeg' : 'image/png';
+                const data = canvas.toDataURL(imgType, config.format === 'jpeg' ? config.quality : undefined);
+                
+                resolve({ data: data, width: targetWidth, height: targetHeight });
+            };
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    // --- PDF変換処理 ---
     async function processPdf(file, config, forZip) {
         const arrayBuffer = await file.arrayBuffer();
         
-        // 【純正描画設定】
-        // cMapUrl: 日本語CIDフォントのマッピング定義ファイルを正確に指定
-        // disableFontFace: 削除 (フォントデータを正しく解釈させる)
-        // standardFontDataUrl: 削除 (代替フォントを使わせない)
         const loadingTask = pdfjsLib.getDocument({
             data: arrayBuffer,
             cMapUrl: CMAP_URL,
             cMapPacked: true,
-            enableXfa: true // XFAフォーム対応（念のためON）
+            enableXfa: true
         });
         
         const pdfDoc = await loadingTask.promise;
         const total = pdfDoc.numPages;
         
         const { jsPDF } = window.jspdf;
-        const newPdf = new jsPDF({ compress: true });
+        const newPdf = new jsPDF({ unit: 'pt', compress: true });
         newPdf.deletePage(1);
         const scale = config.dpi / 72;
 
         for (let num = 1; num <= total; num++) {
             if (abortCtrl) throw new Error('ABORTED');
-            updateProgress(((num - 1) / total) * 100, `${file.name} (${num}/${total}ページ)`);
+            updateProgress(((num - 1) / total) * 100, `${file.name} (${num}/${total})`);
             
             const page = await pdfDoc.getPage(num);
             const viewport = page.getViewport({ scale: scale });
             const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
             canvas.width = viewport.width;
             canvas.height = viewport.height;
             
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            await page.render({ canvasContext: context, viewport }).promise;
 
             const imgType = config.format === 'jpeg' ? 'image/jpeg' : 'image/png';
             const imgData = canvas.toDataURL(imgType, config.format === 'jpeg' ? config.quality : undefined);
-            const props = newPdf.getImageProperties(imgData);
             
-            newPdf.addPage([props.width, props.height], props.width > props.height ? 'l' : 'p');
-            newPdf.addImage(imgData, config.format.toUpperCase(), 0, 0, props.width, props.height);
+            newPdf.addPage([viewport.width, viewport.height], viewport.width > viewport.height ? 'l' : 'p');
+            newPdf.addImage(imgData, config.format.toUpperCase(), 0, 0, viewport.width, viewport.height);
             
-            await new Promise(r => setTimeout(r, 0));
+            canvas.width = 1; 
+            canvas.height = 1;
         }
 
         updateProgress(100, `${file.name} 保存処理...`);
